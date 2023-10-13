@@ -1,9 +1,13 @@
-# ��̬����JSON
+# 动态解析JSON
 
-��ʱ���ر���д�͵�����ͨ�ŵĽӿڻ���������ʱ�������������ݵ�JSON�ļ���ʽ���ȶ������⵱ǰ����ֻ��Ҫ�����ֶΣ���ʱ��ʹ��ʵ�������࣬������岻������Ȼ����з�ϵ�л���ϵ�л��Ȳ����Ժ����ݾͻᶪʧ��
-��ʱ�����Ҫ��̬����JSON�ˡ�
+**开发测试中**
 
-ʾ��JSON
+## 说明
+
+有时候（特别是写和第三方通信的接口或者相关组件时）用来传输数据的JSON文件格式不稳定，另外当前程序只需要部分字段，这时候使用实体数据类，如果定义不完整，然后进行反系列化在系列化等操作以后，数据就会丢失。
+这时候就需要动态解析JSON了。
+
+示例JSON
 
 ```json
 {
@@ -12,7 +16,7 @@
   "CreateTime": "2023-10-13T21:26:22+08:00"
 }
 ```
-ʹ��ʾ����
+使用示例：
 ```c#
     [JsonConverter(typeof(net.xBei.DynamicJson.Converters.DynamicJsonConverter<Car>))]
     class Car : net.xBei.DynamicJson.DynamicJson {
@@ -25,16 +29,21 @@
     }
 
     var car = json.TryDeserialize<Car>() ?? throw new Exception("");
-    car.Name = "����˹��Focus��"
+    car.Name = "福克斯（Focus）"
     Console.WriteLine(car.ToJson(true));
 ```
-��`Car`��Ȼû�ж���`age`�ֶΣ������ڷ����л�ʱ�����Զ����Ե����������л�ʱ�����Զ�������ȥ��
+类`Car`虽然没有定义`age`字段，但是在反序列化时，会自动忽略掉，而在序列化时，会自动添加上去。
 
-��������
+输出结果：
 ```json
 {
-  "Name": "����˹��Focus��",
+  "Name": "福克斯（Focus）",
   "age": 42,
   "CreateTime": "2023-10-13T21:26:22+08:00"
 }
 ```
+
+## 注意
+
+1. **开发测试中**
+1. 还不支持复杂数据类型

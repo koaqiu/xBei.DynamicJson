@@ -11,18 +11,17 @@ namespace net.xBei.DynamicJson {
     /// 动态Json，可以动态解析Json字符串，也可以动态生成Json字符串，依赖“System.Text.Json”。
     /// 不要直接使用类，而是使用派生类。
     /// </summary>
-    [JsonConverter(typeof(DynamicJsonConverter))]
-    public class DynamicJson {
+    public abstract class DynamicJson {
         /// <summary>
         /// 
         /// </summary>
-        protected System.Text.Json.Nodes.JsonNode? Doc { get; private set; }
+        protected JsonNode? Doc { get; private set; }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="doc"></param>
-        public DynamicJson(System.Text.Json.Nodes.JsonNode? doc) {
-            this.Doc = doc;
+        protected DynamicJson(JsonNode? doc) {
+            Doc = doc;
         }
         /// <summary>
         /// 读取字符串属性
@@ -50,6 +49,45 @@ namespace net.xBei.DynamicJson {
         /// <param name="value"></param>
         protected void SetInt(string name, int? value) => SetValue(name, value);
         /// <summary>
+        /// 读取长整型
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        protected long? GetLong(string name)
+            => TryGetValue(Doc?[name], s => long.TryParse(s, out var v) ? v : default);
+        /// <summary>
+        /// 写入长整型
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        protected void SetLong(string name, long? value) => SetValue(name, value);
+        /// <summary>
+        /// 读取单浮点数
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        protected float? GetFloat(string name)
+            => TryGetValue(Doc?[name], s => float.TryParse(s, out var v) ? v : default);
+        /// <summary>
+        /// 写入单浮点数
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        protected void SetFloat(string name, float? value) => SetValue(name, value);
+        /// <summary>
+        /// 读取双浮点数
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        protected double? GetDouble(string name)
+            => TryGetValue(Doc?[name], s => double.TryParse(s, out var v) ? v : default);
+        /// <summary>
+        /// 写入双浮点数
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        protected void SetDouble(string name, double? value) => SetValue(name, value);
+        /// <summary>
         /// 读取高精度浮点数
         /// </summary>
         /// <param name="name"></param>
@@ -75,13 +113,13 @@ namespace net.xBei.DynamicJson {
         /// <param name="value"></param>
         protected void SetBoolean(string name, bool? value) => SetValue(name, value);
         /// <summary>
-        /// 
+        /// 读取日期时间
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
         protected DateTime? GetDateTime(string name) => Doc?[name]?.GetValue<DateTime>().ToLocalTime();
         /// <summary>
-        /// 
+        /// 写入日期时间
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
@@ -91,11 +129,11 @@ namespace net.xBei.DynamicJson {
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        protected IEnumerable<System.Text.Json.Nodes.JsonNode>? GetList(string name) {
+        protected IEnumerable<JsonNode>? GetList(string name) {
             var node = Doc?[name];
-            return node != null && node is System.Text.Json.Nodes.JsonArray array
+            return node != null && node is JsonArray array
                 ? array.Where(x => x != null)
-                            .Cast<System.Text.Json.Nodes.JsonNode>()
+                            .Cast<JsonNode>()
                 : null;
         }
         /// <summary>
@@ -103,22 +141,22 @@ namespace net.xBei.DynamicJson {
         /// </summary>
         /// <param name="name"></param>
         /// <param name="list"></param>
-        protected void SetList(string name, IEnumerable<System.Text.Json.Nodes.JsonNode>? list)
-            => SetList(name, new System.Text.Json.Nodes.JsonArray(list == null ? Array.Empty<System.Text.Json.Nodes.JsonNode>() : list.ToArray()));
+        protected void SetList(string name, IEnumerable<JsonNode>? list)
+            => SetList(name, new JsonArray(list == null ? Array.Empty<JsonNode>() : list.ToArray()));
         /// <summary>
         /// 写入列表
         /// </summary>
         /// <param name="name"></param>
         /// <param name="list"></param>
-        protected void SetList(string name, params System.Text.Json.Nodes.JsonNode[] list)
-            => SetList(name, new System.Text.Json.Nodes.JsonArray(list));
+        protected void SetList(string name, params JsonNode[] list)
+            => SetList(name, new JsonArray(list));
         /// <summary>
         /// 写入列表
         /// </summary>
         /// <param name="name"></param>
         /// <param name="list"></param>
-        protected void SetList(string name, System.Text.Json.Nodes.JsonArray? list) {
-            Doc ??= new System.Text.Json.Nodes.JsonObject();
+        protected void SetList(string name, JsonArray? list) {
+            Doc ??= new JsonObject();
             Doc[name] = list;
         }
         /// <summary>
@@ -126,8 +164,8 @@ namespace net.xBei.DynamicJson {
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
-        protected void SetValue(string name, System.Text.Json.Nodes.JsonNode? value) {
-            Doc ??= new System.Text.Json.Nodes.JsonObject();
+        protected void SetValue(string name, JsonNode? value) {
+            Doc ??= new JsonObject();
             Doc[name] = value;
         }
         /// <summary>
@@ -155,25 +193,22 @@ namespace net.xBei.DynamicJson {
         /// <param name="json"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        public static bool TryParseJson(string json, [NotNullWhen(true)] out System.Text.Json.Nodes.JsonNode? result) {
+        public static bool TryParseJson(string json, [NotNullWhen(true)] out JsonNode? result) {
             result = null;
             if (string.IsNullOrWhiteSpace(json)) return false;
             try {
-                result = System.Text.Json.Nodes.JsonNode.Parse(json,
-                    new System.Text.Json.Nodes.JsonNodeOptions {
+                result = JsonNode.Parse(json,
+                    new JsonNodeOptions {
                         PropertyNameCaseInsensitive = true,
                     });
             } catch {
             }
             return result != null;
         }
-        internal static DynamicJson? TryCreate(string? json) {
-            if (string.IsNullOrWhiteSpace(json)) return default;
-            return TryParseJson(json, out var node) ? new DynamicJson(node) : default;
-        }
-        private static T? TryGetValue<T>(System.Text.Json.Nodes.JsonNode? node, Func<string, T> tryParse)
-            => TryGetValue<T>(node?.AsValue(), tryParse);
-        private static T? TryGetValue<T>(System.Text.Json.Nodes.JsonValue? node, Func<string, T> tryParse) {
+
+        private static T? TryGetValue<T>(JsonNode? node, Func<string, T> tryParse)
+            => TryGetValue(node?.AsValue(), tryParse);
+        private static T? TryGetValue<T>(JsonValue? node, Func<string, T> tryParse) {
             return node?.TryGetValue<T>(out var v) == true
                         ? v
                         : node?.TryGetValue<string>(out var s) == true
@@ -182,7 +217,7 @@ namespace net.xBei.DynamicJson {
         }
 
         internal void InitByDoc(JsonNode doc) {
-            this.Doc = doc;
+            Doc = doc;
         }
     }
 }

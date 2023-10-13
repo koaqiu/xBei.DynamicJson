@@ -12,7 +12,7 @@ namespace net.xBei.DynamicJson.Helper {
     /// </summary>
     public static class DynamicJsonHelper {
         /// <summary>
-        /// 
+        /// 解析JSON到类型：<typeparamref name="T"/>，必须继承自<see cref="DynamicJson"/>。
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
@@ -25,7 +25,7 @@ namespace net.xBei.DynamicJson.Helper {
             return result != null;
         }
         /// <summary>
-        /// 
+        /// 解析JSON到类型：<typeparamref name="T"/>，必须继承自<see cref="DynamicJson"/>。
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
@@ -34,7 +34,7 @@ namespace net.xBei.DynamicJson.Helper {
             return TryDeserialize<T>(json, out var data) ? data : default;
         }
         /// <summary>
-        /// 
+        /// 解析JSON到类型：<typeparamref name="T"/>，必须继承自<see cref="DynamicJson"/>。
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
@@ -43,7 +43,7 @@ namespace net.xBei.DynamicJson.Helper {
         public static T TryDeserialize<T>(this string? json, T dv) where T : DynamicJson {
             return TryDeserialize<T>(json, out var data) ? data : dv;
         }
-        private static T? CreateDynamicJson<T>(JsonNode node) where T : DynamicJson {
+        internal static T CreateDynamicJson<T>(JsonNode node) where T : DynamicJson {
             var inc = System.Activator.CreateInstance<T>();
             inc.InitByDoc(node);
             return inc;
