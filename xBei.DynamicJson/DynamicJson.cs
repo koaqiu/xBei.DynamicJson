@@ -1,14 +1,14 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Text.Unicode;
-using net.xBei.DynamicJson.Converters;
+using System.Xml.Linq;
 
 namespace net.xBei.DynamicJson {
     /// <summary>
     /// 动态Json，可以动态解析Json字符串，也可以动态生成Json字符串，依赖“System.Text.Json”。
+    /// 是动态读取数据的，所以如果Json数据的字段和定义的不兼容，不会在创建对象时报错，而是在读取时报错。
     /// 不要直接使用类，而是使用派生类。
     /// </summary>
     public abstract class DynamicJson {
@@ -23,6 +23,7 @@ namespace net.xBei.DynamicJson {
         protected DynamicJson(JsonNode? doc) {
             Doc = doc;
         }
+        private Dictionary<string, object?> objRef = new();
         /// <summary>
         /// 读取字符串属性
         /// </summary>
@@ -124,8 +125,9 @@ namespace net.xBei.DynamicJson {
         /// <param name="name"></param>
         /// <param name="value"></param>
         protected void SetDateTime(string name, DateTime? value) => SetValue(name, value);
+
         /// <summary>
-        /// 读取列表
+        /// 读取列表，不建议直接使用
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
@@ -137,12 +139,31 @@ namespace net.xBei.DynamicJson {
                 : null;
         }
         /// <summary>
-        /// 写入列表
+        /// 读取字符串列表
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="list"></param>
-        protected void SetList(string name, IEnumerable<JsonNode>? list)
-            => SetList(name, new JsonArray(list == null ? Array.Empty<JsonNode>() : list.ToArray()));
+        /// <returns></returns>
+        protected IEnumerable<string>? GetStringList(string name) {
+            return GetList(name)?.Select(x => x.GetValue<string>());
+        }
+        /// <summary>
+        /// 读取列表
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        protected IEnumerable<T>? GetList<T>(string name) {
+            return GetList(name)?.Select(x => x.GetValue<T>());
+        }
+        /// <summary>
+        /// 读取列表
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        protected void SetList<T>(string name, IEnumerable<T>? value) {
+            var arr = value?.Select(x => JsonValue.Create(x)).ToArray();
+            SetList(name, arr == null ? default : new JsonArray(arr));
+        }
         /// <summary>
         /// 写入列表
         /// </summary>
@@ -160,6 +181,32 @@ namespace net.xBei.DynamicJson {
             Doc[name] = list;
         }
         /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        protected T? GetObject<T>(string name) where T : class, new() {
+            if (!objRef.TryGetValue(name, out var obj)) {
+                obj = Doc?[name]?.Deserialize<T>();
+                if (obj != null) {
+                    objRef[name] = obj;
+                }
+            }
+            return (T?)obj;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        protected void SetObject<T>(string name, T? value) where T : class, new() {
+            Doc ??= new JsonObject();
+            Doc[name] = JsonNode.Parse(JsonSerializer.Serialize(value));
+            objRef[name] = value;
+        }
+        /// <summary>
         /// 写入属性值
         /// </summary>
         /// <param name="name"></param>
@@ -173,19 +220,22 @@ namespace net.xBei.DynamicJson {
         /// </summary>
         /// <param name="WriteIndented"></param>
         /// <returns></returns>
-        public string? ToJson(bool WriteIndented = true) {
-            return Doc?.ToJsonString(new JsonSerializerOptions() {
+        public string? ToJson(bool WriteIndented = true) 
+            => ToJson(new JsonSerializerOptions() {
                 WriteIndented = WriteIndented,
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             });
-        }
         /// <summary>
         /// 将当前实例转换为 JSON 格式的字符串。
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
         public string? ToJson(JsonSerializerOptions options) {
-            return Doc?.ToJsonString(options);
+            Doc ??= new JsonObject();
+            foreach (var item in objRef) {
+                Doc[item.Key] = JsonNode.Parse(JsonSerializer.Serialize(item.Value));
+            }
+            return Doc.ToJsonString(options);
         }
         /// <summary>
         /// 解析Json
@@ -201,6 +251,8 @@ namespace net.xBei.DynamicJson {
                     new JsonNodeOptions {
                         PropertyNameCaseInsensitive = true,
                     });
+            } catch (JsonException) {
+                throw;
             } catch {
             }
             return result != null;
